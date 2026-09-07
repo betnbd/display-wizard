@@ -1,4 +1,10 @@
-# Display Wizard
+<p align="center">
+  <img src="Assets/AppIcon.png" width="112" alt="Display Wizard app icon">
+</p>
+<h1 align="center">Display Wizard</h1>
+<p align="center"><strong>Brightness and scaling, within easy reach.</strong></p>
+<p align="center">Apple Silicon · macOS 14+ · Native menu-bar app</p>
+<p align="center"><a href="#install">Install</a> · <a href="#everyday-controls">Controls</a> · <a href="#limits">Compatibility</a> · <a href="docs/TESTING.md">Testing</a></p>
 
 A compact native macOS menu-bar utility for display brightness and scaling. Requires Apple Silicon, macOS 14 or later, and Swift 6 command-line tools to build.
 
@@ -14,19 +20,74 @@ A compact native macOS menu-bar utility for display brightness and scaling. Requ
 
 Settings offers **System text size…**, opening macOS Accessibility → Display for compatible apps and system features. **Appearance** contains Display Wizard’s own reading size. Login launch and wake/reconnect brightness restoration are opt-in.
 
-## Build, test, and install
+## Install
+
+**Requirements:** an Apple Silicon Mac running macOS 14 or later, Git, and
+Swift 6 command-line tools with the macOS SDK and `make`.
+External hardware brightness requires a compatible monitor and DDC connection.
+
+### Build and install from source
 
 ```sh
+git clone https://github.com/betnbd/display-wizard.git
+cd display-wizard
 bash scripts/build.sh
-bash scripts/test.sh
 # Quit Display Wizard using its app menu before installing or updating.
 bash scripts/install.sh
 open "$HOME/Applications/Display Wizard.app"
 ```
 
-The installer uses one stable location, `~/Applications/Display Wizard.app`, verifies the new bundle before replacing the old one, and leaves preferences untouched. A second launched copy exits instead of creating another hardware controller. The app menu includes About and the current version.
+The installer uses one stable location, `~/Applications/Display Wizard.app`,
+verifies the new bundle before replacing the old one, and leaves preferences
+untouched. A second launched copy exits instead of creating another hardware
+controller. The app menu includes About and the current version.
 
-Preferences are stored in `~/Library/Application Support/DisplayWizard/preferences.json`. Upgrades migrate older files while retaining presets, favorites, calibration, and reading size. The build output is ad-hoc signed for local use, not Developer ID signed or notarized for distribution.
+### Run directly from the build
+
+To try the app before installing it, run this after the build step:
+
+```sh
+open "build/Display Wizard.app"
+```
+
+Quit that copy before installing. Launch at login is best used with the stable
+installed location.
+
+**Download status:** there is currently no published GitHub release or Homebrew
+cask. Builds are ad-hoc signed for local use; they are **not Developer ID signed
+or notarized** for distribution.
+
+### Update or remove
+
+From your checkout, run `git pull --ff-only`, rebuild, quit the app, and rerun
+`scripts/install.sh`. Preferences are stored in
+`~/Library/Application Support/DisplayWizard/preferences.json`; upgrades retain
+presets, favorites, calibration, and reading size.
+
+To remove the app, turn off its launch-at-login option, quit, and move
+`~/Applications/Display Wizard.app` to the Trash. Keep the preferences directory
+if you plan to reinstall.
+
+## First run
+
+1. Open the menu-bar panel and check that your displays appear.
+2. Adjust one display's brightness, then try **Link brightness** or **Match**.
+3. Choose a scale and confirm it within 15 seconds; otherwise it reverts.
+4. Save a brightness preset for a setup you use often.
+
+Login launch and wake/reconnect brightness restoration are opt-in in Settings.
+If external brightness is unavailable, check the monitor's DDC/CI setting and
+connection; support varies by hardware. **Match** estimates perceived brightness,
+while **Fine-tune** lets you adjust the result visually.
+
+## Build and validate
+
+```sh
+bash scripts/test.sh
+```
+
+See [verification notes](docs/TESTING.md) for test coverage and the manual hardware
+checks needed for brightness, hotkeys, sleep/wake, and reconnection.
 
 ## Implementation
 
@@ -43,3 +104,13 @@ DDC support depends on the monitor and connection. The app does not create custo
 See [verification notes](docs/TESTING.md). The compact controls take inspiration from [Omarchy’s monitor panel](https://github.com/basecamp/omarchy/blob/quattro/shell/plugins/panels/monitor/Panel.qml).
 
 Memory behavior: the dropdown and keyboard-feedback views are released when hidden. Matching support loads only when requested or required by saved matching settings. A small session object preserves the settings page and unfinished preset name across dropdown openings.
+
+## License and credits
+
+A project-level license has not yet been added for the original Display Wizard
+code. The bundled [m1ddc](https://github.com/waydabber/m1ddc) helper retains its
+[MIT license](Vendor/m1ddc/LICENSE) and [upstream record](Vendor/m1ddc/UPSTREAM.md).
+Thank you to its maintainers for the Apple Silicon DDC foundation.
+
+Built by [Ben](https://github.com/betnbd). Pair it with
+[Mac Themes](https://github.com/betnbd/mac-themes) for coordinated wallpapers and app colors.
