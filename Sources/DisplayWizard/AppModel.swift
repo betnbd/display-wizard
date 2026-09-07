@@ -19,6 +19,7 @@ import SwiftUI
     @Published var brightnessProfiles: [UInt32: BrightnessProfile] = [:]
     @Published var matchingInProgress = false
     private var matchRequest = 0
+    private var hasRequestedMatching = false
     @Published var notice: String?
     @Published var pendingMode: (displayID: UInt32, original: Int32)?
     @Published var countdown = 15
@@ -80,9 +81,9 @@ import SwiftUI
         // hasRefreshed remains true even when every display has disconnected.
         let reconnect = hasRefreshed && !incoming.isEmpty
         displays = newDisplays
-        brightnessProfiles = Dictionary(uniqueKeysWithValues: newDisplays.compactMap { display in
-            services.profile(display).map { (display.id, $0) }
-        })
+        if preferences.matchedBrightness || hasRequestedMatching {
+            loadBrightnessProfiles()
+        }
         recalculateVisualGains()
         knownDisplays = Set(newDisplays.map(\.stableID))
         hasRefreshed = true
@@ -165,7 +166,17 @@ import SwiftUI
         return nil
     }
     var canStartBrightnessMatch: Bool { matchUnavailableReason == nil }
+    private func loadBrightnessProfiles() {
+        brightnessProfiles = Dictionary(uniqueKeysWithValues: displays.compactMap { display in
+            services.profile(display).map { (display.id, $0) }
+        })
+    }
     func matchBrightness() {
+        if !hasRequestedMatching {
+            hasRequestedMatching = true
+            loadBrightnessProfiles()
+            recalculateVisualGains()
+        }
         if let reason = matchUnavailableReason {
             notice = reason
             return
@@ -189,7 +200,7 @@ import SwiftUI
             }
             guard let reference = self.matchReference, let level = fresh[reference.id] else { return }
             let profiles = Dictionary(uniqueKeysWithValues: candidates.compactMap { display in
-                services.profile(display).map { (display.id, $0) }
+                self.services.profile(display).map { (display.id, $0) }
             })
             self.brightnessProfiles = profiles
             self.recalculateVisualGains()

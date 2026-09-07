@@ -3,47 +3,51 @@ import AppKit
 
 // Explicit alias avoids the new SDK macro requiring full Xcode.
 
+@MainActor final class WizardViewSession: ObservableObject {
+    @Published var presetName = ""
+    @Published var addingPreset = false
+    @Published var showSettings = false
+    @Published var showMatchTuning = false
+}
+
 struct WizardView: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var session: WizardViewSession
     var height: CGFloat = 660
-    @ViewState<String> private var presetName = ""
-    @ViewState<Bool> private var addingPreset = false
-    @ViewState<Bool> private var showSettings = false
-    @ViewState<Bool> private var showMatchTuning = false
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack {
-                        Text(showSettings ? "Settings" : "Your displays").wizardFont(size: 12, weight: .semibold).foregroundStyle(.secondary)
+                        Text(session.showSettings ? "Settings" : "Your displays").wizardFont(size: 12, weight: .semibold).foregroundStyle(.secondary)
                         Spacer()
                         Text("\(model.displays.count) connected").wizardFont(size: 11).foregroundStyle(.secondary)
                         Button { model.refresh() } label: {
                             Image(systemName: "arrow.clockwise").frame(width: 32, height: 32).contentShape(Rectangle())
                         }.buttonStyle(.plain).help("Refresh displays").accessibilityLabel("Refresh displays")
                     }
-                    if !showSettings {
+                    if !session.showSettings {
                         VStack(alignment: .leading, spacing: 8) {
                             ViewThatFits(in: .horizontal) {
                                 HStack(spacing: 12) { linkToggle; Spacer(minLength: 0); matchButton }
                                 VStack(alignment: .leading, spacing: 8) { linkToggle; matchButton }
                             }
-                            if model.preferences.linkedBrightness || model.preferences.matchedBrightness || showMatchTuning {
+                            if model.preferences.linkedBrightness || model.preferences.matchedBrightness || session.showMatchTuning {
                                 HStack {
                                     Text(model.preferences.brightnessLinkStatus).wizardFont(size: 11).foregroundStyle(.secondary)
                                     Spacer()
-                                    if model.preferences.matchedBrightness || showMatchTuning {
-                                    Button(showMatchTuning ? "Done" : "Fine-tune") {
-                                        if !showMatchTuning { model.beginMatchTuning() }
-                                        showMatchTuning.toggle()
+                                    if model.preferences.matchedBrightness || session.showMatchTuning {
+                                    Button(session.showMatchTuning ? "Done" : "Fine-tune") {
+                                        if !session.showMatchTuning { model.beginMatchTuning() }
+                                        session.showMatchTuning.toggle()
                                     }.wizardFont(size: 11).buttonStyle(.plain).padding(6).contentShape(Rectangle())
                                     }
                                 }
                             }
-                            if showMatchTuning { matchTuning }
+                            if session.showMatchTuning { matchTuning }
                         }
                     }
-                    if showSettings {
+                    if session.showSettings {
                         WizardSettingsView(model: model)
                     } else {
                         ForEach(model.displays) { display in DisplayCard(model: model, display: display) }
@@ -113,11 +117,11 @@ struct WizardView: View {
                     }
                 }
             }
-            Button("Save visual match") { if model.saveVisualMatch() { showMatchTuning = false } }
+            Button("Save visual match") { if model.saveVisualMatch() { session.showMatchTuning = false } }
                 .wizardFont(size: 12).controlSize(.large).disabled(!model.canSaveVisualMatch)
             Button("Use ordinary linking") {
                 model.useOrdinaryLinking()
-                showMatchTuning = false
+                session.showMatchTuning = false
             }.wizardFont(size: 11).buttonStyle(.plain).frame(minHeight: 30)
         }.padding(12).background(surface, in: RoundedRectangle(cornerRadius: 10))
     }
@@ -129,7 +133,7 @@ struct WizardView: View {
                     Button(preset.name) { model.applyPreset(preset) }
                 }
                 Divider()
-                Button("Save current brightness…") { addingPreset = true }
+                Button("Save current brightness…") { session.addingPreset = true }
                 if !model.preferences.presets.isEmpty {
                     Menu("Delete preset") {
                         ForEach(model.preferences.presets) { preset in
@@ -141,22 +145,22 @@ struct WizardView: View {
                 Label("Brightness presets", systemImage: "sun.horizon")
                     .wizardFont(size: 12).frame(maxWidth: .infinity, minHeight: 36, alignment: .leading).contentShape(Rectangle())
             }.menuStyle(.borderlessButton).accessibilityLabel("Brightness presets")
-            if addingPreset {
-                TextField("Preset name", text: $presetName).wizardFont(size: 12).textFieldStyle(.roundedBorder).onSubmit(savePreset)
+            if session.addingPreset {
+                TextField("Preset name", text: $session.presetName).wizardFont(size: 12).textFieldStyle(.roundedBorder).onSubmit(savePreset)
                 HStack {
-                    Button("Cancel") { addingPreset = false; presetName = "" }.wizardFont(size: 12).controlSize(.large)
+                    Button("Cancel") { session.addingPreset = false; session.presetName = "" }.wizardFont(size: 12).controlSize(.large)
                     Spacer()
-                    Button("Save", action: savePreset).wizardFont(size: 12).controlSize(.large).disabled(presetName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("Save", action: savePreset).wizardFont(size: 12).controlSize(.large).disabled(session.presetName.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }
     }
-    private func savePreset() { model.savePreset(name: presetName); presetName = ""; addingPreset = false }
+    private func savePreset() { model.savePreset(name: session.presetName); session.presetName = ""; session.addingPreset = false }
     private var footer: some View {
         HStack {
             HStack(spacing: 5) { Circle().fill(accent).frame(width: 5, height: 5); Text("Display Wizard").wizardFont(size: 10).foregroundStyle(.secondary) }
             Spacer()
-            Button { showSettings.toggle() } label: { Label(showSettings ? "Displays" : "Settings", systemImage: showSettings ? "display" : "gearshape").wizardFont(size: 13, weight: .medium).foregroundStyle(showSettings ? accent : .primary).padding(.horizontal, 12).frame(height: 38).background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8)).contentShape(Rectangle()) }.buttonStyle(.plain).help(showSettings ? "Back to displays" : "Settings").accessibilityLabel(showSettings ? "Back to displays" : "Settings")
+            Button { session.showSettings.toggle() } label: { Label(session.showSettings ? "Displays" : "Settings", systemImage: session.showSettings ? "display" : "gearshape").wizardFont(size: 13, weight: .medium).foregroundStyle(session.showSettings ? accent : .primary).padding(.horizontal, 12).frame(height: 38).background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8)).contentShape(Rectangle()) }.buttonStyle(.plain).help(session.showSettings ? "Back to displays" : "Settings").accessibilityLabel(session.showSettings ? "Back to displays" : "Settings")
             AppMenuButton { model.revertMode(); NSApp.terminate(nil) }.frame(width: 38, height: 38)
         }.padding(.horizontal, 16).padding(.vertical, 14).overlay(alignment: .top) { Rectangle().fill(Color.primary.opacity(0.07)).frame(height: 1) }
     }

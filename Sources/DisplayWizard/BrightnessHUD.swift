@@ -36,6 +36,8 @@ import SwiftUI
             do { try await Task.sleep(for: .milliseconds(1500)) }
             catch { return }
             self?.panel?.orderOut(nil)
+            self?.panel?.contentView = nil
+            self?.panel = nil
             self?.dismissTask = nil
         }
     }

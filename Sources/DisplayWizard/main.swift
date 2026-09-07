@@ -1,15 +1,18 @@
 import AppKit
 import SwiftUI
 import Carbon
+import Darwin
 
-@MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
+@MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     let model = AppModel()
     var statusItem: NSStatusItem!
     let popover = NSPopover()
+    let viewSession = WizardViewSession()
     var hotkeys: [EventHotKeyRef?] = []
     var localKeyMonitor: Any?
     var outsideClickMonitor: Any?
     private var feedbackGeneration = 0
+    private var memoryCleanup: DispatchWorkItem?
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         statusItem = NSStatusBar.system.statusItem(withLength: 32)
@@ -19,7 +22,7 @@ import Carbon
         }
         popover.behavior = .applicationDefined
         popover.animates = true
-        popover.contentViewController = NSHostingController(rootView: WizardView(model: model))
+        popover.delegate = self
         outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             Task { @MainActor in self?.popover.performClose(nil) }
         }
@@ -41,17 +44,31 @@ import Carbon
     }
     private func showPanel() {
         guard let button = statusItem.button else { return }
+        memoryCleanup?.cancel()
+        memoryCleanup = nil
         model.refresh()
         LoginItemManager.shared.refresh()
         // Reserve room below the dropdown for the Quit pull-down menu.
         let height = min(CGFloat(660), (button.window?.screen?.visibleFrame.height ?? 850) - 85)
-        if let host = popover.contentViewController as? NSHostingController<WizardView> {
-            host.rootView = WizardView(model: model, height: height)
+        if popover.contentViewController == nil {
+            popover.contentViewController = NSHostingController(rootView: WizardView(model: model, session: viewSession, height: height))
         }
         popover.contentSize = NSSize(width: 370, height: height)
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKeyAndOrderFront(nil)
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        // Keep only the tiny editing session; release the hidden SwiftUI tree,
+        // native menus, accessibility objects and backing layers.
+        popover.contentViewController = nil
+        // After autoreleased UI objects drain, return unused allocator pages.
+        // Delay and cancellation avoid churning memory during quick reopenings.
+        memoryCleanup?.cancel()
+        let cleanup = DispatchWorkItem { _ = malloc_zone_pressure_relief(nil, 0) }
+        memoryCleanup = cleanup
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2, execute: cleanup)
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

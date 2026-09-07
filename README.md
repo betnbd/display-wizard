@@ -41,3 +41,5 @@ Brightness matching is an estimate, not an optical measurement. The Mac profile 
 DDC support depends on the monitor and connection. The app does not create custom modes, virtual displays, HDR boosts, or software dimming overlays. System text sizing only affects apps and features that support the macOS setting.
 
 See [verification notes](docs/TESTING.md). The compact controls take inspiration from [Omarchy’s monitor panel](https://github.com/basecamp/omarchy/blob/quattro/shell/plugins/panels/monitor/Panel.qml).
+
+Memory behavior: the dropdown and keyboard-feedback views are released when hidden. Matching support loads only when requested or required by saved matching settings. A small session object preserves the settings page and unfinished preset name across dropdown openings.

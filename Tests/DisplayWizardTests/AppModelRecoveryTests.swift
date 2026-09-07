@@ -7,11 +7,12 @@ import Testing
     var connected = [display]
     var level: Double? = 0.4
     var fails = false
+    var profileReads = 0
     var writes: [Double] = []
     var modes: [Int32] = []
     var saved: Preferences?
     var services: AppModelServices {
-        AppModelServices(displays: { self.connected }, profile: { _ in BrightnessProfile(minimumNits: 0, maximumNits: 500, sourceDescription: "Test") }, brightness: { _ in BrightnessStatus(value: self.level, isHardware: true, detail: "Test read") }, setBrightness: { _, value in
+        AppModelServices(displays: { self.connected }, profile: { _ in self.profileReads += 1; return BrightnessProfile(minimumNits: 0, maximumNits: 500, sourceDescription: "Test") }, brightness: { _ in BrightnessStatus(value: self.level, isHardware: true, detail: "Test read") }, setBrightness: { _, value in
             self.writes.append(value)
             if self.fails { throw DisplayBackendError.unavailable("Simulated failure") }
             self.level = value
@@ -25,6 +26,23 @@ import Testing
 }
 
 @MainActor struct AppModelRecoveryTests {
+    @Test func ordinaryUseDoesNotLoadMatchingFramework() async {
+        let fake = FakeDisplays()
+        let model = await fake.model()
+        model.refresh()
+        #expect(fake.profileReads == 0)
+        model.matchBrightness()
+        #expect(fake.profileReads == 1)
+    }
+
+    @Test func savedMatchingLoadsProfilesOnStartup() async {
+        let fake = FakeDisplays()
+        var preferences = Preferences()
+        preferences.matchedBrightness = true
+        _ = await fake.model(preferences)
+        #expect(fake.profileReads == 1)
+    }
+
     @Test func disconnectedWriteIsCancelledAndCannotBlockFutureMatch() async throws {
         let fake = FakeDisplays()
         let model = await fake.model()

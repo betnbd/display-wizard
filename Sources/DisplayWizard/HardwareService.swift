@@ -9,7 +9,7 @@ actor HardwareService {
     func brightness(displayID: UInt32) async -> BrightnessStatus {
         await withCheckedContinuation { continuation in
             queue.async {
-                continuation.resume(returning: DisplayBackend.brightness(displayID: displayID))
+                continuation.resume(returning: autoreleasepool { DisplayBackend.brightness(displayID: displayID) })
             }
         }
     }
@@ -18,7 +18,7 @@ actor HardwareService {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             queue.async {
                 do {
-                    try DisplayBackend.setBrightness(displayID: displayID, value: value)
+                    try autoreleasepool { try DisplayBackend.setBrightness(displayID: displayID, value: value) }
                     continuation.resume()
                 } catch {
                     continuation.resume(throwing: error)

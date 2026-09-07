@@ -26,3 +26,19 @@ Automated recovery coverage simulates unplugging and wake events. A physical cab
 ## UI design
 
 The main view keeps brightness and scale actions visible. Secondary settings use native menus with generous triggers. Reading-size changes reflow the grid, while the footer remains fixed. Semantic colors follow macOS appearance. Native menu and segmented-control typography is managed by macOS.
+
+## Memory optimization — 1.8.0
+
+40 tests pass, including deferred profile loading for ordinary use and immediate loading when saved matching requires it. The UI session survives destruction/recreation of its host; settings-page restoration was verified live.
+
+Local `vmmap -summary` spot measurements on the same Mac and two displays:
+
+| State | Physical footprint |
+| --- | --- |
+| Original 1.7.0 process, already used for about 30 minutes | 49.4 MB |
+| Updated 1.8.0, dropdown open | 32.1 MB |
+| Updated 1.8.0, dropdown closed | 30.7 MB |
+
+These are observed snapshots, not a controlled long-duration benchmark. SwiftUI's AttributeGraph allocation count returns to zero after closing. Matching was off: using Match or restoring a matched configuration loads the additional matching framework and increases memory. macOS retains some shared/framework caches; RSS includes shared pages and differs from physical footprint.
+
+The app now creates its hosting controller only on demand, releases it on close, retains only the small editing session, releases dismissed HUD content, drains hardware autorelease pools, and requests reclamation of unused allocator pages after a short idle delay. No display hardware settings changed during this pass.
