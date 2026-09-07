@@ -107,8 +107,7 @@ Memory behavior: the dropdown and keyboard-feedback views are released when hidd
 
 ## License and credits
 
-A project-level license has not yet been added for the original Display Wizard
-code. The bundled [m1ddc](https://github.com/waydabber/m1ddc) helper retains its
+Display Wizard is released under the [MIT License](LICENSE). The bundled [m1ddc](https://github.com/waydabber/m1ddc) helper retains its
 [MIT license](Vendor/m1ddc/LICENSE) and [upstream record](Vendor/m1ddc/UPSTREAM.md).
 Thank you to its maintainers for the Apple Silicon DDC foundation.
 
